@@ -56,21 +56,21 @@ module.exports = async function handler(req, res) {
 - 相談内容: ${question || '特になし'}
 
 【引き当てた籤の情報】
-- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})
-- 宮位: ${lotData.palace}
-- 籤名・典故: ${lotData.title}
-- 核心要約: ${lotData.summary}
+- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})[cite: 3]
+- 宮位: ${lotData.palace}[cite: 3]
+- 籤名・典故: ${lotData.title}[cite: 3]
+- 核心要約: ${lotData.summary}[cite: 3]
 - 籤詩原文:
-${lotData.poem_original}
-- 詩意: ${lotData.poem_meaning}
-- 傳統解曰: ${lotData.explanation_original}
-- 現代語解釈: ${lotData.explanation_modern}
-- 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}
+${lotData.poem_original}[cite: 3]
+- 詩意: ${lotData.poem_meaning}[cite: 3]
+- 傳統解曰: ${lotData.explanation_original}[cite: 3]
+- 現代語解釈: ${lotData.explanation_modern}[cite: 3]
+- 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}[cite: 3]
 
 以下の構成で、美しく分かりやすいマークダウン形式で回答を出力してください：
 1. **◆ 神意・お諭し**（籤詩の雰囲気を交え、全体のメッセージを厳かに伝える）
-2. **◆ 悩みに寄せた解釈**（ユーザーの相談内容に直接触れ、このおみくじが今の状況にどう作用しているか解説する）
-3. **◆ 項目別の指針・アドバイス**（仙機データや現代語解釈に基づく具体的な解説）
+2. **◆ 悩みに寄せた解釈**（ユーザーの相談内容に直接触れ、このおみくじが今の状況にどう作用しているか解説する）[cite: 3]
+3. **◆ 項目別の指針・アドバイス**（仙機データや現代語解釈に基づく具体的な解説）[cite: 3]
 4. **◆ 結び**（温かい締めくくりのメッセージ）
 `;
 
