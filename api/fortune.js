@@ -18,11 +18,10 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-  if (!apiKey || !supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     return res.status(500).json({ error: 'Environment variables are missing on Vercel' });
   }
 
@@ -46,65 +45,34 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch lot from database: ' + (dbError?.message || 'Not found') });
     }
 
-    // 4. 取得したおみくじデータと相談内容をまとめて Gemini に渡すプロンプトを作成
-    const prompt = `
-あなたは観音靈籤（観音百籤）の熟練した解籤者・霊媒師です。
-ユーザーが引いたおみくじの結果と相談内容に基づき、慈愛と導きに満ちた深い解釈を提供してください。
+    // 4. データベースにある詳細データを元に、見やすいメッセージを組み立てて返す
+    const aiResponseText = `
+### 第${lotData.lot_number}籤 (${lotData.fortune}) - ${lotData.title}
+- **宮位**: ${lotData.palace}[cite: 3]
+- **核心要約**: ${lotData.summary}[cite: 3]
 
-【ユーザーの相談情報】
-- 相談カテゴリ: ${category || '全般'}
-- 相談内容: ${question || '特になし'}
+#### 【 籤詩原文 】
+${lotData.poem_original}[cite: 3]
 
-【引き当てたおみくじデータ】
-- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})[cite: 3]
-- 宮位: ${lotData.palace}[cite: 3]
-- 籤名/故事: ${lotData.title}[cite: 3]
-- 核心要約: ${lotData.summary}[cite: 3]
-- 籤詩原文:\n${lotData.poem_original}[cite: 3]
-- 詩意: ${lotData.poem_meaning}[cite: 3]
-- 傳統解曰: ${lotData.explanation_original}[cite: 3]
-- 現代語解釈: ${lotData.explanation_modern}[cite: 3]
-- 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}[cite: 3]
+#### 【 詩意 】
+${lotData.poem_meaning}[cite: 3]
 
-以下の構成で美しく分かりやすくマークダウン形式で回答を出力してください：
-1. **引き当てたおみくじの概要**（籤番号、吉凶、籤名、原文）[cite: 3]
-2. **現代における意味と解釈**（ユーザーの相談内容に寄り添った具体的なアドバイス）[cite: 3]
-3. **項目別の指針・アドバイス**（仙機データに基づく解説）[cite: 3]
-4. **観音様からのありがたいメッセージ（結び）**
+#### 【 傳統解曰 】
+${lotData.explanation_original}[cite: 3]
+
+#### 【 現代語解釈 】
+${lotData.explanation_modern}[cite: 3]
+
+#### 【 仙機（項目別吉凶） 】
+\`\`\`json
+${JSON.stringify(lotData.divination_details, null, 2)}
+\`\``
 `;
 
-    // 5. Gemini API を呼び出す (最新の指定モデル: gemini-3.8-flash)
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
-    }
-
-    // 6. 安全にAIの回答テキストを取り出す（オプショナルチェイニングでエラーを完全に防止）
-    let aiText = '解釈を生成できませんでした。';
-    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      aiText = data.candidates[0].content.parts[0].text;
-    } else if (data?.text) {
-      aiText = data.text;
-    } else {
-      aiText = 'AIからの応答形式が予期せぬものでした: ' + JSON.stringify(data);
-    }
-
-    // 7. AIの回答文 ＋ 引いたおみくじの基本データをまとめて返す
+    // 5. Supabaseから取得したデータをそのままフロントエンドに返す
     return res.status(200).json({
       lot: lotData,
-      aiResponse: aiText
+      aiResponse: aiResponseText
     });
 
   } catch (err) {
