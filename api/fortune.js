@@ -85,19 +85,30 @@ module.exports = async function handler(req, res) {
       }
     );
 
+    // Gemini API を呼び出す部分のあとの処理
     const data = await response.json();
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
     }
 
-    // 6. AIの回答文 ＋ 引いたおみくじの基本データをまとめて返す
+    // 安全にAIの回答テキストを取り出す
+    let aiText = '解釈を生成できませんでした。';
+    
+    // オプショナルチェイニングを使って安全にプロパティを参照する
+    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      aiText = data.candidates[0].content.parts[0].text;
+    } else if (data?.text) {
+      aiText = data.text;
+    } else {
+      // 予期せぬレスポンス形式だった場合のデバッグ用
+      aiText = 'AIからの応答形式が予期せぬものでした: ' + JSON.stringify(data);
+    }
+
     return res.status(200).json({
       lot: lotData,
-      aiResponse: data.candidates?.[0]?.content?.parts?.[0]?.text || '解釈を生成できませんでした。'
+      aiResponse: aiText
     });
-
-  } catch (err) {
     return res.status(500).json({ error: 'サーバーエラー: ' + err.message });
   }
 };
