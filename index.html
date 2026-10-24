@@ -3,107 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>觀音靈籤 - Gemini API テスト</title>
+  <title>觀音靈籤 - 神仏の鑑定</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; background: #f9f9f9; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    textarea, input, select, button { width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-    button { background: #8b0000; color: white; font-weight: bold; border: none; cursor: pointer; }
-    #result { white-space: pre-wrap; background: #fff8f8; padding: 15px; border-left: 4px solid #8b0000; margin-top: 15px; }
+    body {
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Sans-serif;
+      background-color: #f7f4ed;
+      color: #2b2b2b;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      border: 1px solid #e0dacf;
+    }
+    h1 {
+      text-align: center;
+      color: #8b0000;
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    input[type="text"], select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      background-color: #8b0000;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 1.1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #a00000;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 25px;
+      padding: 15px;
+      background: #faf8f5;
+      border-left: 5px solid #8b0000;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
 
-<div class="card">
-  <h2>觀音靈籤 AIおみくじ（テスト版）</h2>
+<div class="container">
+  <h1>觀音靈籤 占い</h1>
   
-  <label>API Key:</label>
-  <input type="password" id="apiKey" placeholder="AIzaSy..." />
+  <div class="form-group">
+    <label for="category">ご相談のカテゴリ：</label>
+    <select id="category">
+      <option value="仕事・人間関係">仕事・人間関係</option>
+      <option value="恋愛・結婚">恋愛・結婚</option>
+      <option value="金運・投資">金運・投資</option>
+      <option value="健康・病気">健康・病気</option>
+      <option value="学業・試験">学業・試験</option>
+      <option value="全体運">全体運</option>
+    </select>
+  </div>
 
-  <label>お悩みカテゴリ:</label>
-  <select id="category">
-    <option value="恋愛">恋愛・パートナー</option>
-    <option value="仕事">仕事・人間関係</option>
-    <option value="進路">進学・進路選択</option>
-  </select>
+  <div class="form-group">
+    <label for="userQuery">具体的なお悩み・状況：</label>
+    <textarea id="userQuery" rows="3" placeholder="例：上司と意見が合わず、職場で浮いてしまって辛いです。"></textarea>
+  </div>
 
-  <label>具体的な悩み:</label>
-  <textarea id="userQuery" rows="3" placeholder="悩みを入力してください..."></textarea>
+  <button id="submitBtn" onclick="drawFortune()">おみくじを引いて鑑みる</button>
 
-  <button onclick="drawAndAnalyze()">おみくじを引いて鑑定する</button>
-
-  <div id="result">ここに鑑定結果が表示されます</div>
+  <div id="result" style="display: none;"></div>
 </div>
 
 <script>
-// 先ほど作成した100籤データの一部（テスト用にサンプル配置）
-const sampleLots = [
-  {
-    lot_number: 1, fortune: "上籤", palace: "子宮",
-    historical_allusion: "鍾離成道",
-    poem: "開天闢地作良緣，吉日良時萬物全。若得此籤皆大吉，家和萬事自然興。"
-  },
-  {
-    lot_number: 2, fortune: "下籤", palace: "子宮",
-    historical_allusion: "蘇秦不第",
-    poem: "鯨魚未變守江河，不可升騰更望高。異日張弓射大鯨，此時且退忍忍耐。"
-  }
-];
-
-async function drawAndAnalyze() {
-  const apiKey = document.getElementById('apiKey').value;
-  const category = document.getElementById('category').value;
-  const userQuery = document.getElementById('userQuery').value;
-  const resultDiv = document.getElementById('result');
-
-  if (!apiKey) { alert('API Keyを入力してください'); return; }
-  if (!userQuery) { alert('お悩みを入力してください'); return; }
-
-  resultDiv.innerText = "神仏にお伺いを立てています...";
-
-  // 1. ランダムで籤を1つ抽選
-  const selectedLot = sampleLots[Math.floor(Math.random() * sampleLots.length)];
-
-  // 2. Gemini API へのプロンプト作成
-  const prompt = `
-あなたは觀音靈籤の厳かな神仏の代弁者です。威厳と慈愛に満ちた言葉で鑑定結果を出力してください。
-
-【相談者のお悩み】
-カテゴリ: ${category}
-内容: ${userQuery}
-
-【引いた籤の情報】
-籤番号: 第${selectedLot.lot_number}籤
-吉凶: ${selectedLot.fortune} (${selectedLot.palace})
-典故: ${selectedLot.historical_allusion}
-籤詩: ${selectedLot.poem}
-
-【回答フォーマット】
-◆ 神意・お諭し
-◆ 悩みに寄せた解釈
-◆ 今日から実践すべき「三つの導き」
-◆ 結び
-`;
-
-  // 3. Gemini API (gemini-2.5-flash) を直接呼び出し
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
-
-    const data = await response.json();
-    const text = data.candidates[0].content.parts[0].text;
-    
-    resultDiv.innerHTML = `<strong>【引いた籤】第${selectedLot.lot_number}籤 (${selectedLot.fortune}) - ${selectedLot.historical_allusion}</strong>\n\n` + text;
-  } catch (error) {
-    resultDiv.innerText = "エラーが発生しました: " + error.message;
-  }
-}
-</script>
-
-</body>
-</html>
+  // テスト用籤データ（第1籤）
+  const sampleLot = {
+    lot_number: 1,
+    title: "鍾離成道",
+    fortune: "上籤",
+    palace: "子宮",
+    summary: "受擁而發",
+    poem_original: "開天闢地作良緣\n吉日良時萬物全\
