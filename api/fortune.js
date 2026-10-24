@@ -1,10 +1,8 @@
 export default async function handler(req, res) {
-  // POST 以外のアクセスを拒否
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // Vercel の環境変数から API Key を取得
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -14,9 +12,9 @@ export default async function handler(req, res) {
   try {
     const { prompt } = req.body;
 
-    // Gemini 2.5 Flash API を呼び出す
+    // モデル名を gemini-3.8-flash に更新
     const googleResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
