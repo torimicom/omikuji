@@ -1,24 +1,6 @@
-export default async function handler(req, res) {
-  // CORS 設定
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+const { createClient } = require('@supabase/supabase-js');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  const apiKey = process.env.GEMINI_Aimport { createClient } from '@supabase/supabase-js';
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS 設定
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -45,7 +27,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { category, question } = req.body;
+    const { category, question } = req.body || {};
 
     // 1. Supabase クライアントの初期化
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -64,7 +46,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch lot from database: ' + (dbError?.message || 'Not found') });
     }
 
-    // 4. 取得したおみくじデータとユーザーの相談内容をまとめて Gemini に渡すプロンプトを作成
+    // 4. 取得したおみくじデータと相談内容をまとめて Gemini に渡すプロンプトを作成
     const prompt = `
 あなたは観音靈籤（観音百籤）の熟練した解籤者・霊媒師です。
 ユーザーが引いたおみくじの結果と相談内容に基づき、慈愛と導きに満ちた深い解釈を提供してください。
@@ -91,7 +73,7 @@ export default async function handler(req, res) {
 4. **観音様からのありがたいメッセージ（結び）**
 `;
 
-    // 5. Gemini API (gemini-3.8-flash) を呼び出す
+    // 5. Gemini API を呼び出す
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
@@ -109,44 +91,13 @@ export default async function handler(req, res) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
     }
 
-    // 6. AIの回答文 ＋ 引いたおみくじの基本データをまとめてフロントエンドに返す
+    // 6. AIの回答文 ＋ 引いたおみくじの基本データをまとめて返す
     return res.status(200).json({
       lot: lotData,
       aiResponse: data.candidates?.[0]?.content?.parts?.[0]?.text || '解釈を生成できませんでした。'
     });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'サーバーエラー: ' + err.message });
   }
-}PI_KEY;
-
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is missing in Vercel' });
-  }
-
-  try {
-    const { prompt } = req.body;
-
-    // 現在利用可能な gemini-3.8-flash エンドポイント
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
-    }
-
-    return res.status(200).json(data);
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-}
+};
