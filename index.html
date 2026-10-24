@@ -119,7 +119,7 @@
     poem_original: "開天闢地作良緣\n吉日良時萬物全\n若得此籤非小可\n人行忠正帝王宣"
   };
 
-  async function drawFortune() {
+async function drawFortune() {
     const category = document.getElementById('category').value;
     const userQuery = document.getElementById('userQuery').value;
     const resultDiv = document.getElementById('result');
@@ -137,48 +137,23 @@
     resultDiv.className = "loading";
     resultDiv.innerText = "神意を伺っております。少々おまちください...";
 
-    // AIへのプロンプト組み立て
-    const promptText = `
-あなたは觀音靈籤の厳かな神仏の代弁者です。
-相談者の「お悩み」と「引き当てた籤（籤詩・吉凶・典故）」の情報をもとに、威厳と慈愛に満ちた言葉で鑑定結果を出力してください。
-
-【相談者の情報】
-カテゴリ：${category}
-相談内容：${userQuery}
-
-【引いた籤の情報】
-籤番号：第${sampleLot.lot_number}籤
-籤名・典故：${sampleLot.title}
-吉凶：${sampleLot.fortune}（${sampleLot.palace}）
-要約：${sampleLot.summary}
-籤詩：
-${sampleLot.poem_original}
-
-【出力フォーマット】
-1. ◆ 神意・お諭し（籤詩を一節引用し、全体のメッセージを厳かに伝える）
-2. ◆ 悩みに寄せた解釈（相談内容に直接触れ、この卦が今の状況にどう作用しているか解説する）
-3. ◆ 今日から実践すべき「三つの導き」（具体的かつ現実的なアドバイスを3点提示する）
-4. ◆ 結び（温かい締めくくりの一言）
-`;
-
     try {
       // Vercel の API Route (/api/fortune) を呼び出す
       const response = await fetch('/api/fortune', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText })
+        body: JSON.stringify({ category, question: userQuery })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error?.message || data.error || '通信エラーが発生しました');
+        throw new Error(data.error || '通信エラーが発生しました');
       }
 
-      // 結果の抽出・表示
-      const aiReply = data.candidates[0].content.parts[0].text;
+      // 【修正】サーバーから返ってきた aiResponse をそのまま表示する
       resultDiv.className = "";
-      resultDiv.innerText = aiReply;
+      resultDiv.innerText = data.aiResponse;
 
     } catch (error) {
       resultDiv.className = "";
