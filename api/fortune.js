@@ -85,7 +85,6 @@ module.exports = async function handler(req, res) {
       }
     );
 
-    // Gemini API を呼び出す部分のあとの処理
     const data = await response.json();
 
     if (!response.ok) {
@@ -95,13 +94,11 @@ module.exports = async function handler(req, res) {
     // 安全にAIの回答テキストを取り出す
     let aiText = '解釈を生成できませんでした。';
     
-    // オプショナルチェイニングを使って安全にプロパティを参照する
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       aiText = data.candidates[0].content.parts[0].text;
     } else if (data?.text) {
       aiText = data.text;
     } else {
-      // 予期せぬレスポンス形式だった場合のデバッグ用
       aiText = 'AIからの応答形式が予期せぬものでした: ' + JSON.stringify(data);
     }
 
@@ -109,6 +106,8 @@ module.exports = async function handler(req, res) {
       lot: lotData,
       aiResponse: aiText
     });
+
+  } catch (err) {
     return res.status(500).json({ error: 'サーバーエラー: ' + err.message });
   }
 };
