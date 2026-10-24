@@ -45,14 +45,16 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch lot from database: ' + (dbError?.message || 'Not found') });
     }
 
-    // 4. データベースにある詳細データを元に、見やすいメッセージを組み立てて返す
+    // 4. データベースにある詳細データを元に、見やすいマークダウン形式のメッセージを組み立てる
     const aiResponseText = `
 ### 第${lotData.lot_number}籤 (${lotData.fortune}) - ${lotData.title}
 - **宮位**: ${lotData.palace}[cite: 3]
 - **核心要約**: ${lotData.summary}[cite: 3]
 
 #### 【 籤詩原文 】
-${lotData.poem_original}[cite: 3]
+\`\`\`
+${lotData.poem_original}
+\`\`\`[cite: 3]
 
 #### 【 詩意 】
 ${lotData.poem_meaning}[cite: 3]
@@ -66,7 +68,7 @@ ${lotData.explanation_modern}[cite: 3]
 #### 【 仙機（項目別吉凶） 】
 \`\`\`json
 ${JSON.stringify(lotData.divination_details, null, 2)}
-\`\``
+\`\`\`[cite: 3]
 `;
 
     // 5. Supabaseから取得したデータをそのままフロントエンドに返す
