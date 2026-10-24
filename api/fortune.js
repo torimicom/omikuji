@@ -56,24 +56,24 @@ module.exports = async function handler(req, res) {
 - 相談内容: ${question || '特になし'}
 
 【引き当てたおみくじデータ】
-- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})
-- 宮位: ${lotData.palace}
-- 籤名/故事: ${lotData.title}
-- 核心要約: ${lotData.summary}
-- 籤詩原文:\n${lotData.poem_original}
-- 詩意: ${lotData.poem_meaning}
-- 傳統解曰: ${lotData.explanation_original}
-- 現代語解釈: ${lotData.explanation_modern}
-- 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}
+- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})[cite: 3]
+- 宮位: ${lotData.palace}[cite: 3]
+- 籤名/故事: ${lotData.title}[cite: 3]
+- 核心要約: ${lotData.summary}[cite: 3]
+- 籤詩原文:\n${lotData.poem_original}[cite: 3]
+- 詩意: ${lotData.poem_meaning}[cite: 3]
+- 傳統解曰: ${lotData.explanation_original}[cite: 3]
+- 現代語解釈: ${lotData.explanation_modern}[cite: 3]
+- 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}[cite: 3]
 
 以下の構成で美しく分かりやすくマークダウン形式で回答を出力してください：
-1. **引き当てたおみくじの概要**（籤番号、吉凶、籤名、原文）
-2. **現代における意味と解釈**（ユーザーの相談内容に寄り添った具体的なアドバイス）
-3. **項目別の指針・アドバイス**（仙機データに基づく解説）
+1. **引き当てたおみくじの概要**（籤番号、吉凶、籤名、原文）[cite: 3]
+2. **現代における意味と解釈**（ユーザーの相談内容に寄り添った具体的なアドバイス）[cite: 3]
+3. **項目別の指針・アドバイス**（仙機データに基づく解説）[cite: 3]
 4. **観音様からのありがたいメッセージ（結び）**
 `;
 
- // 5. Gemini API を呼び出す
+    // 5. Gemini API を呼び出す (最新の指定モデル: gemini-3.8-flash)
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
@@ -84,15 +84,15 @@ module.exports = async function handler(req, res) {
         })
       }
     );
+
     const data = await response.json();
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
     }
 
-    // 安全にAIの回答テキストを取り出す
+    // 6. 安全にAIの回答テキストを取り出す（オプショナルチェイニングでエラーを完全に防止）
     let aiText = '解釈を生成できませんでした。';
-    
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       aiText = data.candidates[0].content.parts[0].text;
     } else if (data?.text) {
@@ -101,6 +101,7 @@ module.exports = async function handler(req, res) {
       aiText = 'AIからの応答形式が予期せぬものでした: ' + JSON.stringify(data);
     }
 
+    // 7. AIの回答文 ＋ 引いたおみくじの基本データをまとめて返す
     return res.status(200).json({
       lot: lotData,
       aiResponse: aiText
