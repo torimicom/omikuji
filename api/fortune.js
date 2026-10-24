@@ -11,15 +11,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    });
+// 【変更後】自分のVercel APIを叩く（APIキーを画面に露出させない）
+const response = await fetch('/api/fortune', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: prompt })
+});
 
-    const data = await response.json();
+const data = await response.json();
+const text = data.candidates[0].content.parts[0].text;
     return res.status(200).json(data);
   } catch (error) {
     return res.status(500).json({ error: error.message });
