@@ -71,13 +71,40 @@
       background: #faf8f5;
       border-left: 5px solid #8b0000;
       border-radius: 4px;
-      white-space: pre-wrap;
       line-height: 1.6;
     }
     .loading {
       text-align: center;
       color: #666;
       font-style: italic;
+      white-space: pre-wrap;
+    }
+    /* 漢詩（原文）を表示する神聖なボックスのデザイン */
+    .poem-box {
+      background: #fdfbf7;
+      border: 1px solid #d4c5b9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .poem-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #8b0000;
+      white-space: pre-wrap;
+      line-height: 1.8;
+      letter-spacing: 0.1em;
+    }
+    .lot-header {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+      text-align: center;
+    }
+    .ai-interpretation {
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -109,17 +136,7 @@
 </div>
 
 <script>
-  // テスト用籤データ（第1籤）
-  const sampleLot = {
-    lot_number: 1,
-    title: "鍾離成道",
-    fortune: "上籤",
-    palace: "子宮",
-    summary: "受擁而發",
-    poem_original: "開天闢地作良緣\n吉日良時萬物全\n若得此籤非小可\n人行忠正帝王宣"
-  };
-
-async function drawFortune() {
+  async function drawFortune() {
     const category = document.getElementById('category').value;
     const userQuery = document.getElementById('userQuery').value;
     const resultDiv = document.getElementById('result');
@@ -151,9 +168,23 @@ async function drawFortune() {
         throw new Error(data.error || '通信エラーが発生しました');
       }
 
-      // 【修正】サーバーから返ってきた aiResponse をそのまま表示する
+      // 結果の描画（データベースから取得した漢詩原文を最上部に表示し、その下にAIの解釈を配置）
       resultDiv.className = "";
-      resultDiv.innerText = data.aiResponse;
+      resultDiv.innerHTML = `
+        <div class="lot-header">第 ${data.lot.lot_number} 籤 【${data.lot.fortune}】 - ${data.lot.title}</div>
+        <div style="text-align:center; color:#666; margin-bottom:15px;">宮位：${data.lot.palace} ｜ 要約：${data.lot.summary}</div>
+        
+        <!-- データベースから直接取り出した「漢詩の原文」を一番上に表示 -->
+        <div class="poem-box">
+          <div style="font-size: 0.85rem; color: #888; margin-bottom: 5px;">【 籤詩原文 】</div>
+          <div class="poem-text">${data.lot.poem_original}</div>
+        </div>
+
+        <!-- AIが生成した現代の悩みに寄り添う解釈を表示 -->
+        <div class="ai-interpretation">
+          ${data.aiResponse.replace(/\n/g, '<br>')}
+        </div>
+      `;
 
     } catch (error) {
       resultDiv.className = "";
