@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async function handler(req, res) {
+  // CORS ヘッダー設定
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -22,15 +23,19 @@ module.exports = async function handler(req, res) {
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
   if (!apiKey || !supabaseUrl || !supabaseAnonKey) {
-    return res.status(500).json({ error: 'Environment variables are missing on Vercel' });
+    return res.status(500).json({ error: 'Vercelの環境変数が不足しています。' });
   }
 
   try {
     const { category, question } = req.body || {};
 
+    // 1. Supabase 初期化
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    // 2. 1〜100 の中からランダムに1つ選ぶ
     const randomLotNumber = Math.floor(Math.random() * 100) + 1;
 
+    // 3. oracle_lots テーブルから籤データを取得
     const { data: lotData, error: dbError } = await supabase
       .from('oracle_lots')
       .select('*')
@@ -38,39 +43,46 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (dbError || !lotData) {
-      return res.status(500).json({ error: 'Failed to fetch lot from database: ' + (dbError?.message || 'Not found') });
+      return res.status(500).json({ error: '籤データの取得に失敗しました: ' + (dbError?.message || 'Not found') });
     }
 
-    // AIには「解釈・アドバイス部分」だけを生成させる簡潔なプロンプト
+    // 4. 丁寧な解説を促すプロンプト（AIには解釈文だけに専念させる）
     const prompt = `
-あなたは觀音靈籤（観音百籤）の熟練した解籤者です。
-ユーザーの相談内容と、引き当てたおみくじのデータをもとに、心に寄り添う慈愛に満ちた現代向けの解釈とアドバイスを提供してください。
+あなたは觀音靈籤（観音百籤）の厳かな神仏の代弁者であり、熟練した解籤者です。
+引き当てたおみくじの卦象と、相談者の【お悩み】をもとに、心に染み入る慈愛と威厳に満ちた丁寧な鑑定結果を出力してください。
 
-【相談情報】
+【相談者の情報】
 - カテゴリ: ${category || '全般'}
-- お悩み: ${question || '特になし'}
+- お悩み・現状: ${question || '特になし'}
 
-【引いた籤データ】
+【引き当てた籤の情報】
 - 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})
-- 宮位: ${lotData.palace}
-- 籤名: ${lotData.title}
+- 籤名・典故: ${lotData.title}
 - 核心要約: ${lotData.summary}
+- 詩意: ${lotData.poem_meaning}
 - 現代語解釈: ${lotData.explanation_modern}
 - 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}
 
-以下の構成で、マークダウン形式で解釈を出力してください：
-1. **◆ 悩みに寄せた現在の状況と導き**
-2. **◆ 項目別の指針**
-3. **◆ 観音様からの温かいメッセージ**
+以下の構成で、美しく分かりやすいマークダウン形式で丁寧に出力してください：
+1. **◆ 神意・現在の状況**（この卦象が今の相談者の状況にどう作用しているか深掘りして解説）
+2. **◆ 悩みに寄せた具体的な導き**（お悩みに対する具体的な心構えや行動のアドバイス）
+3. **◆ 仙機・項目別の指針**（相談内容に関連する仙機データを交えたアドバイス）
+4. **◆ 結び**（観音様からの温かいお言葉）
+
+※漢詩原文の引用は不要です（フロントエンド側で表示されます）。解説とメッセージの執筆に集中してください。
 `;
 
+    // 5. Gemini API を呼び出し (出力制限を設定してタイムアウトを防止)
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 800 // 丁寧な長文を保ちつつ、タイムアウトを確実に防ぐトークン制限
+          }
         })
       }
     );
@@ -81,12 +93,17 @@ module.exports = async function handler(req, res) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
     }
 
+    // 6. 安全にAIの回答テキストを取り出す
     let aiText = '解釈を生成できませんでした。';
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       aiText = data.candidates[0].content.parts[0].text;
+    } else if (data?.text) {
+      aiText = data.text;
+    } else {
+      aiText = 'AIからの応答形式が予期せぬものでした。';
     }
 
-    // データベースの全データ（漢詩含む）と、AIの解釈を両方返す
+    // 7. おみくじの基本データとAIの解釈を返却
     return res.status(200).json({
       lot: lotData,
       aiResponse: aiText
