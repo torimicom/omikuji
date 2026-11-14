@@ -73,20 +73,19 @@ module.exports = async function handler(req, res) {
 `;
 
     // 5. 最も安定動作する標準モデル（gemini-1.5-flash）で Gemini API を呼び出し
-    const response = await fetch(
-   https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 1200 // 途切れ防止と安定性のバランスが良い上限値
-          }
-        })
+const response = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 1200
       }
-    );
-
+    })
+  }
+);
     const rawText = await response.text();
 
 let data;
