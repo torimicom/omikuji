@@ -41,32 +41,30 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: '籤データの取得に失敗しました: ' + (dbError?.message || 'Not found') });
     }
 
-    // 途切れを防ぐため、簡潔かつ明確に指示を与えるプロンプト
+    // 軽快かつ確実に書き切るための最適化されたプロンプト
     const prompt = `
-あなたは觀音靈籤（観音百籤）の厳かな神仏の代弁者であり、熟練した解籤者です。
-引き当てたおみくじの卦象と、相談者の【お悩み】をもとに、心に染み入る慈愛に満ちた丁寧な鑑定結果を出力してください。
+あなたは觀音靈籤（観音百籤）の熟練した解籤者です。
+以下の【引いた籤のデータ】と【相談者の情報】をもとに、心に染み入る丁寧な鑑定結果を出力してください。
 
 【相談者の情報】
 - カテゴリ: ${category || '全般'}
 - お悩み・現状: ${question || '特になし'}
 
-【引き当てた籤の情報】
-- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})
-- 籤名・典故: ${lotData.title}
+【引いた籤のデータ】
+- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune}) - ${lotData.title}
 - 核心要約: ${lotData.summary}
 - 現代語解釈: ${lotData.explanation_modern}
 - 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}
 
-以下の3つの構成で、美しく分かりやすいマークダウン形式で出力してください：
+以下の3つの構成で、美しく分かりやすいマークダウン形式で最後まで丁寧に出力してください：
 1. **◆ 神意と現在の状況**（今の相談者の現状にこの卦象がどう作用しているか）
-2. **◆ 具体的な導きとアドバイス**（相談内容に対する心構えや行動指針）
-3. **◆ 観音様からの結びのお言葉**（温かい励まし）
+2. **◆ 悩みに寄せた具体的な導きとアドバイス**（具体的な心構えや行動指針）
+3. **◆ 観音様からの結びのお言葉**（温かい励ましと締めくくり）
 
-※重要：文章が途中で切れないよう、要点をすっきりとまとめつつ、必ず上記3項目を最後まで綺麗に書き切ってください。
+※重要：文章が途中で切れてしまわないよう、要点をすっきりとまとめ、必ず上記3項目を最後まで綺麗に書き切ってください。
 ※漢詩原文の重複記載は不要です。
 `;
 
-    // 出力トークン上限を「2000」に大幅拡大し、途切れを完全に防止
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
@@ -75,7 +73,7 @@ module.exports = async function handler(req, res) {
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            maxOutputTokens: 2000 // 途切れ防止のための安全な最大上限値
+            maxOutputTokens: 1500 // 途切れを防止しつつタイムアウトを防ぐ安全な上限値
           }
         })
       }
