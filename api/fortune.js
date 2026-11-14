@@ -127,4 +127,3 @@ if (!response.ok) {
     return res.status(500).json({ error: 'サーバーエラー: ' + err.message });
   }
 };
-```[cite: 1, 3]
