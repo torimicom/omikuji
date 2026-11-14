@@ -87,7 +87,22 @@ module.exports = async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
+    const rawText = await response.text();
+
+let data;
+
+try {
+  data = JSON.parse(rawText);
+} catch (e) {
+  throw new Error(
+    `API応答がJSONではありません。HTTP ${response.status}\n` +
+    rawText.substring(0, 500)
+  );
+}
+
+if (!response.ok) {
+  throw new Error(data.error || '通信エラーが発生しました');
+}
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
