@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async function handler(req, res) {
-  // CORS ヘッダー設定
+  // CORS 設定
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -45,43 +45,39 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch lot from database: ' + (dbError?.message || 'Not found') });
     }
 
-    // 4. ユーザーのお悩み（question）が入力されている場合の寄り添いメッセージ
-    const userContext = question 
-      ? `\n\n### 💡 您的相談・現状\n- **類別**: ${category || '全般'}\n- **内容**: 「${question}」\n\n> 観音様のお告げは、今のあなたの歩みに静かに寄り添っています。焦らず、この籤の教えを心にお留めください。` 
-      : '';
-
-    // 5. Supabase のデータをもとに、見事なおみくじ解説文を組み立てる（AI不使用・完全安定）
-    const formattedResponse = `
-### 🌿 神意と現在の状況
-${lotData.explanation_modern}${userContext}
+    // 4. データベースにある詳細データを元に、見やすいマークダウン形式のメッセージを組み立てる
+    const aiResponseText = `
+### 第${lotData.lot_number}籤 (${lotData.fortune}) - ${lotData.title}
+- **宮位**: ${lotData.palace}[cite: 3]
+- **核心要約**: ${lotData.summary}[cite: 3]
 
 #### 【 籤詩原文 】
+\`\`\`
 ${lotData.poem_original}
+\`\`\`[cite: 3]
 
 #### 【 詩意 】
-${lotData.poem_meaning}
+${lotData.poem_meaning}[cite: 3]
 
-### 🔮 項目別の指針・アドバイス
-- **家宅 / 自身**: ${lotData.divination_details?.家宅 || '平穏無事'}, ${lotData.divination_details?.自身 || '順調'}
-- **求財 / 交易**: ${lotData.divination_details?.求財 || '時機を待つ'}, ${lotData.divination_details?.交易 || '慎重に'}
-- **婚姻 / 六甲**: ${lotData.divination_details?.婚姻 || '縁を大切に'}, ${lotData.six_jia || lotData.divination_details?.六甲 || '安泰'}
+#### 【 傳統解曰 】
+${lotData.explanation_original}[cite: 3]
 
-### ✨ 観音様からの温かいメッセージ
-物事にはすべて正しいタイミングがあります。心を穏やかに保ち、目の前のなすべきことに誠実に向き合うことで、自ずと道は開かれていきます。
+#### 【 現代語解釈 】
+${lotData.explanation_modern}[cite: 3]
+
+#### 【 仙機（項目別吉凶） 】
+\`\`\`json
+${JSON.stringify(lotData.divination_details, null, 2)}
+\`\`\`[cite: 3]
 `;
 
-    // 6. データをフロントエンドに返す
+    // 5. Supabaseから取得したデータをそのままフロントエンドに返す
     return res.status(200).json({
       lot: lotData,
-      aiResponse: formattedResponse
+      aiResponse: aiResponseText
     });
 
   } catch (err) {
     return res.status(500).json({ error: 'サーバーエラー: ' + err.message });
   }
 };
-```[cite: 1]
-
----
-
-このコードに変更していただければ、Googleのサーバー混雑や制限に怯える必要が一切なくなり、**ボタンを押した瞬間にサクサク快適におみくじが引ける状態**になります。ぜひ試してみてくださいね！
