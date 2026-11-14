@@ -1,7 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async function handler(req, res) {
-  // CORS 設定
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -18,23 +17,20 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  const apiKey = process.env.GEMINI_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return res.status(500).json({ error: 'Environment variables are missing on Vercel' });
+  if (!apiKey || !supabaseUrl || !supabaseAnonKey) {
+    return res.status(500).json({ error: 'Vercelの環境変数が不足しています。' });
   }
 
   try {
     const { category, question } = req.body || {};
 
-    // 1. Supabase クライアントの初期化
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    // 2. 1〜100 の中からランダムに1つ番号を選ぶ
     const randomLotNumber = Math.floor(Math.random() * 100) + 1;
 
-    // 3. Supabase の oracle_lots テーブルからその番号のデータを取得
     const { data: lotData, error: dbError } = await supabase
       .from('oracle_lots')
       .select('*')
@@ -42,44 +38,64 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (dbError || !lotData) {
-      return res.status(500).json({ error: 'Failed to fetch lot from database: ' + (dbError?.message || 'Not found') });
+      return res.status(500).json({ error: '籤データの取得に失敗しました: ' + (dbError?.message || 'Not found') });
     }
 
-    // 4. ユーザーの悩みが入力されている場合、それに合わせた温かいメッセージを自動で組み立てる
-    const userContext = question 
-      ? `\n\n### 💡 您的相談與現狀\n- **類別**: ${category || '全般'}\n- **內容**: 「${question}」\n\n> 観音様のお告げは、今のあなたの歩みに静かに寄り添っています。焦らず、この籤の教えを心にお留めください。` 
-      : '';
+    // 軽快かつ確実に書き切るための最適化されたプロンプト
+    const prompt = `
+あなたは觀音靈籤（観音百籤）の熟練した解籤者です。
+以下の【引いた籤のデータ】と【相談者の情報】をもとに、心に染み入る丁寧な鑑定結果を出力してください。
 
-    // 5. データベースのデータを使って、綺麗に整形したレスポンス文字列を作る
-    const formattedAiResponse = `
-### 🌿 神意と現在の状況
-${lotData.explanation_modern}${userContext}
+【相談者の情報】
+- カテゴリ: ${category || '全般'}
+- お悩み・現状: ${question || '特になし'}
 
-### 🔮 項目別の指針・アドバイス
-- **家宅 / 自身**: ${lotData.divination_details?.家宅 || '平穏無事'}, ${lotData.divination_details?.自身 || '順調'}
-- **求財 / 交易**: ${lotData.divination_details?.求財 || '時機を待つ'}, ${lotData.divination_details?.交易 || '慎重に'}
-- **婚姻 / 六甲**: ${lotData.divination_details?.婚姻 || '縁を大切に'}, ${lotData.divination_details?.六甲 || '安泰'}
+【引いた籤のデータ】
+- 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune}) - ${lotData.title}
+- 核心要約: ${lotData.summary}
+- 現代語解釈: ${lotData.explanation_modern}
+- 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}
 
-### ✨ 観音様からの温かいメッセージ
-物事にはすべて正しいタイミングがあります。心を穏やかに保ち、目の前のなすべきことに誠実に向き合うことで、自ずと道は開かれていきます。
+以下の3つの構成で、美しく分かりやすいマークダウン形式で最後まで丁寧に出力してください：
+1. **◆ 神意と現在の状況**（今の相談者の現状にこの卦象がどう作用しているか）
+2. **◆ 悩みに寄せた具体的な導きとアドバイス**（具体的な心構えや行動指針）
+3. **◆ 観音様からの結びのお言葉**（温かい励ましと締めくくり）
+
+※重要：文章が途中で切れてしまわないよう、要点をすっきりとまとめ、必ず上記3項目を最後まで綺麗に書き切ってください。
+※漢詩原文の重複記載は不要です。
 `;
 
-    // 6. Supabaseのデータ ＋ 整形したテキストをフロントエンドに返す（完全エラーフリー）
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 1500 // 途切れを防止しつつタイムアウトを防ぐ安全な上限値
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
+    }
+
+    let aiText = '解釈を生成できませんでした。';
+    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      aiText = data.candidates[0].content.parts[0].text;
+    }
+
     return res.status(200).json({
       lot: lotData,
-      aiResponse: formattedAiResponse
+      aiResponse: aiText
     });
 
   } catch (err) {
     return res.status(500).json({ error: 'サーバーエラー: ' + err.message });
   }
 };
-```[cite: 1]
-
----
-
-### この構成にするメリット
-* **混雑エラー・タイムアウトが絶対に起きなくなる**：Googleのサーバーを一切呼び出さないため、台湾からでもどこからでも一瞬で結果が表示されます。
-* **データが保証される**：Supabaseに登録されている美しい漢詩原文や現代語解釈が、いつ何時でも100%確実に画面に反映されます[cite: 1]。
-
-このコードに差し替えていただくと、嘘のようにエラーが一切出なくなり、サクサク快適に動くおみくじアプリになりますので、ぜひお試しください！
