@@ -156,13 +156,26 @@
 
     try {
       // Vercel の API Route (/api/fortune) を呼び出す
-      const response = await fetch('/api/fortune', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, question: userQuery })
-      });
+const response = await fetch('/api/fortune', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ category, question: userQuery })
+});
 
-      const data = await response.json();
+const rawText = await response.text();
+console.log('API status:', response.status);
+console.log('API response:', rawText);
+
+let data;
+try {
+  data = JSON.parse(rawText);
+} catch (e) {
+  throw new Error('APIの応答がJSONではありません: ' + rawText.slice(0, 500));
+}
+
+if (!response.ok) {
+  throw new Error(data.error || 'サーバーエラー: ' + response.status);
+}
 
       if (!response.ok) {
         throw new Error(data.error || '通信エラーが発生しました');
