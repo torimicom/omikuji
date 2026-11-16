@@ -127,7 +127,7 @@ ${lotData.divination_details || ''}
             }
           ],
           generationConfig: {
-            maxOutputTokens: 1200
+            maxOutputTokens: 2500
           }
         })
       }
