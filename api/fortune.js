@@ -109,11 +109,6 @@ if (!response.ok) {
     `Gemini API エラー（HTTP ${response.status}）: ${errorMessage}`
   );
 }
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
-    }
-
     // 6. 安全にAIの回答テキストを取り出す
     let aiText = '解釈を生成できませんでした。';
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
