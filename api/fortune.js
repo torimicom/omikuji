@@ -20,6 +20,7 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const totalStart = Date.now();
     // 4. 環境変数の確認
     const apiKey = process.env.GEMINI_API_KEY;
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -58,7 +59,8 @@ module.exports = async (req, res) => {
         '籤番号 ' + randomLotNumber + ' のデータが見つかりません。'
       );
     }
-
+console.log('Supabase取得時間:', Date.now() - totalStart, 'ms');
+const geminiStart = Date.now();
     // 9. Geminiに渡す解釈用プロンプト
     const prompt = `
 あなたは観音霊籤の意味を、現代の人にも分かりやすく丁寧に解説する案内人です。
@@ -133,6 +135,7 @@ ${lotData.divination_details || ''}
 
     // 11. Geminiの応答を読み取る
     const rawText = await response.text();
+    console.log('Gemini応答時間:', Date.now() - geminiStart, 'ms');
     let data;
 
     try {
