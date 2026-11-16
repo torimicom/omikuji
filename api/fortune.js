@@ -100,7 +100,14 @@ try {
 }
 
 if (!response.ok) {
-  throw new Error(data.error || '通信エラーが発生しました');
+  const errorMessage =
+    data.error?.message ||
+    JSON.stringify(data.error) ||
+    'Gemini API Error';
+
+  throw new Error(
+    `Gemini API エラー（HTTP ${response.status}）: ${errorMessage}`
+  );
 }
 
     if (!response.ok) {
