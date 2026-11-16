@@ -177,10 +177,6 @@ if (!response.ok) {
   throw new Error(data.error || 'サーバーエラー: ' + response.status);
 }
 
-      if (!response.ok) {
-        throw new Error(data.error || '通信エラーが発生しました');
-      }
-
       // 結果の描画（データベースから取得した漢詩原文を最上部に表示し、その下にAIの解釈を配置）
       resultDiv.className = "";
       resultDiv.innerHTML = `
