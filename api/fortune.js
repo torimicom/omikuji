@@ -46,7 +46,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: '籤データの取得に失敗しました: ' + (dbError?.message || 'Not found') });
     }
 
-    // 4. 途切れを防ぐため、コンパクトかつ的確に指示を絞ったプロンプト
+    // 4. プロンプトの構成
     const prompt = `
 あなたは觀音靈籤（観音百籤）の厳かな神仏の代弁者であり、熟練した解籤者です。
 引き当てたおみくじの卦象と、相談者の【お悩み】をもとに、心に染み入る慈愛と威厳に満ちた丁寧な鑑定結果を出力してください。
@@ -59,34 +59,49 @@ module.exports = async function handler(req, res) {
 - 籤番号: 第${lotData.lot_number}籤 (${lotData.fortune})
 - 籤名・典故: ${lotData.title}
 - 核心要約: ${lotData.summary}
+- 詩意: ${lotData.poem_meaning}
 - 現代語解釈: ${lotData.explanation_modern}
 - 仙機（項目別吉凶）: ${JSON.stringify(lotData.divination_details)}
 
-以下の3つの構成で、美しく分かりやすいマークダウン形式で簡潔に出力してください：
-1. **◆ 神意と現在の状況**
-2. **◆ 悩みに寄せた具体的な導きとアドバイス**
-3. **◆ 観音様からの結びのお言葉**
+以下の構成で、美しく分かりやすいマークダウン形式で丁寧に出力してください：
+1. **◆ 神意と現在の状況**（今の相談者の現状に卦象がどう作用しているか深掘り）
+2. **◆ 悩みに寄せた具体的な導きとアドバイス**（相談内容への具体的な心構えや行動指針）
+3. **◆ 観音様からの結びのお言葉**（温かい励ましと締めくくり）
 
-※重要：必ず上記3項目を最後まで文字切れなく書き切るため、冗長な表現を避け、要点をスッキリとまとめて出力してください。
-※漢詩原文の引用は不要です（フロントエンドで表示されます）。
+※各項目は要点をまとめ、途中で文章が切れないよう最後まで綺麗に書き切ってください。
+※漢詩原文の引用は不要です（フロントエンド側で表示されます）。
 `;
 
-    // 5. Gemini API を呼び出し (出力トークンを 1200 に設定し、速度と文章量のバランスを最適化)
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 1200 // 途切れ防止と速度の最適バランス
-          }
-        })
+    // 5. 最も安定動作する標準モデル（gemini-1.5-flash）で Gemini API を呼び出し
+const response = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 1200
       }
-    );
+    })
+  }
+);
+    const rawText = await response.text();
 
-    const data = await response.json();
+let data;
+
+try {
+  data = JSON.parse(rawText);
+} catch (e) {
+  throw new Error(
+    `API応答がJSONではありません。HTTP ${response.status}\n` +
+    rawText.substring(0, 500)
+  );
+}
+
+if (!response.ok) {
+  throw new Error(data.error || '通信エラーが発生しました');
+}
 
     if (!response.ok) {
       return res.status(response.status).json({ error: data.error?.message || 'Gemini API Error' });
@@ -113,10 +128,6 @@ module.exports = async function handler(req, res) {
   }
 };
 ```[cite: 1, 3]
-
----
-
-### 💡 途切れを防ぐためのポイント
 * **プロンプトのダイエット**：AIへの指示文から無駄な修飾語を削り、3つの構成（神意・アドバイス・結び）に絞ることで、AIが文字数オーバーで力尽きること（途切れ）を防いでいます[cite: 1, 3]。
 * **出力上限の適切な設定**：`maxOutputTokens: 1200` により、最後までしっかりとしたボリュームの解説を綺麗に出力し切ることができます[cite: 1, 3]。
 
